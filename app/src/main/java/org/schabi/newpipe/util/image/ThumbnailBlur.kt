@@ -120,8 +120,11 @@ private fun boxBlur(
     val window = radius * 2 + 1
     val maxPosition = lineLength - 1
 
-    fun indexOf(line: Int, position: Int): Int =
-        if (horizontal) line * width + position else position * width + line
+    fun indexOf(line: Int, position: Int): Int = if (horizontal) {
+        line * width + position
+    } else {
+        position * width + line
+    }
 
     for (line in 0 until lineCount) {
         var sumAlpha = 0
@@ -140,9 +143,9 @@ private fun boxBlur(
         for (position in 0 until lineLength) {
             output[indexOf(line, position)] =
                 ((sumAlpha / window) shl 24) or
-                    ((sumRed / window) shl 16) or
-                    ((sumGreen / window) shl 8) or
-                    (sumBlue / window)
+                ((sumRed / window) shl 16) or
+                ((sumGreen / window) shl 8) or
+                (sumBlue / window)
 
             val added = input[indexOf(line, (position + radius + 1).coerceAtMost(maxPosition))]
             val removed = input[indexOf(line, (position - radius).coerceAtLeast(0))]

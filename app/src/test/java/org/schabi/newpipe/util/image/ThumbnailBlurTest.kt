@@ -45,15 +45,13 @@ class ThumbnailBlurTest {
 
     @Test
     fun strongerStrengthsUseLargerRadii() {
+        val light = ThumbnailBlur.radius(ThumbnailBlur.LIGHT)
+        val medium = ThumbnailBlur.radius(ThumbnailBlur.MEDIUM)
+        val strong = ThumbnailBlur.radius(ThumbnailBlur.STRONG)
+
         assertEquals(0, ThumbnailBlur.radius(ThumbnailBlur.OFF))
-        assertTrue(
-            ThumbnailBlur.radius(ThumbnailBlur.LIGHT) <
-                ThumbnailBlur.radius(ThumbnailBlur.MEDIUM)
-        )
-        assertTrue(
-            ThumbnailBlur.radius(ThumbnailBlur.MEDIUM) <
-                ThumbnailBlur.radius(ThumbnailBlur.STRONG)
-        )
+        assertTrue(light < medium)
+        assertTrue(medium < strong)
     }
 
     @Test
