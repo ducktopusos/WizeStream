@@ -14,11 +14,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
-          architecture: arm64
 
       - name: Cache Android SDK
         uses: actions/cache@v3
@@ -29,10 +28,15 @@ jobs:
       - name: Install Android SDK
         if: runner.os == 'Linux'
         run: |
-          mkdir -p ~/.android/sdk/cmdline-tools/latest
+          mkdir -p ~/.android/sdk/cmdline-tools
           curl -L "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
-          unzip -q /tmp/cmdline-tools.zip -d ~/.android/sdk/cmdline-tools/latest
-          mv ~/.android/sdk/cmdline-tools/cmdline-tools ~/.android/sdk/cmdline-tools/latest
+          unzip -q /tmp/cmdline-tools.zip -d ~/.android/sdk/cmdline-tools
+          # The zip may extract to either `cmdline-tools` or `cmdline-tools/tools`; handle both
+          if [ -d ~/.android/sdk/cmdline-tools/tools ]; then
+            mv ~/.android/sdk/cmdline-tools/tools ~/.android/sdk/cmdline-tools/latest
+          else
+            mv ~/.android/sdk/cmdline-tools ~/.android/sdk/cmdline-tools/latest
+          fi
           yes | sdkmanager --licenses
           sdkmanager "platforms;android-37.0" "build-tools;36.1.0" "ndk;28.2.13676358" "platform-tools"
 
