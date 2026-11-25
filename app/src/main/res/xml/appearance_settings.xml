@@ -26,6 +26,16 @@
         app:iconSpaceReserved="false" />
 
     <ListPreference
+        android:defaultValue="off"
+        android:entries="@array/thumbnail_blur_labels"
+        android:entryValues="@array/thumbnail_blur_values"
+        android:key="@string/thumbnail_blur_key"
+        android:title="@string/thumbnail_blur_title"
+        app:iconSpaceReserved="false"
+        app:singleLineTitle="false"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
         android:defaultValue="@string/default_theme_value"
         android:entries="@array/theme_description_list"
         android:entryValues="@array/theme_values_list"
