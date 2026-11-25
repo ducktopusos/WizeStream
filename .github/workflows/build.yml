@@ -5,11 +5,15 @@ on:
     branches: [ pipe ]
   pull_request:
     branches: [ pipe ]
-
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT || '~/.android/sdk' }}
+      ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT || '~/.android/ndk' }}
+      JAVA_HOME: ${{ env.JAVA_HOME || '/usr/lib/jvm/java-21-openjdk' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -18,17 +22,30 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          architecture: arm64
 
-      - name: Set up Android SDK
-        uses: actions/setup-android@v3
+      - name: Cache Android SDK
+        uses: actions/cache@v3
         with:
-          api-level: 37
-          ndk: 28.2.13676358
-          build-tools: 36.1.0
+          path: ~/.android/sdk
+          key: android-sdk-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install Android SDK
+        if: env.ANDROID_SDK_ROOT == '~/.android/sdk'
+        run: |
+          mkdir -p ~/.android/sdk/cmdline-tools/latest
+          curl -L "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d ~/.android/sdk/cmdline-tools/latest
+          mv ~/.android/sdk/cmdline-tools/cmdline-tools ~/.android/sdk/cmdline-tools/latest
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-37.0" "build-tools;36.1.0" "ndk;28.2.13676358" "platform-tools"
 
       - name: Build debug APK
         run: scripts/build.sh debug
 
-      - name: Verify debug APK exists
-        run: |
-          ls -l app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload APK to Release
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
