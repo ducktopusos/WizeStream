@@ -10,10 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT || '~/.android/sdk' }}
-      ANDROID_NDK_ROOT: ${{ env.ANDROID_NDK_ROOT || '~/.android/ndk' }}
-      JAVA_HOME: ${{ env.JAVA_HOME || '/usr/lib/jvm/java-21-openjdk' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +27,7 @@ jobs:
           key: android-sdk-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Android SDK
-        if: env.ANDROID_SDK_ROOT == '~/.android/sdk'
+        if: runner.os == 'Linux'
         run: |
           mkdir -p ~/.android/sdk/cmdline-tools/latest
           curl -L "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip" -o /tmp/cmdline-tools.zip
@@ -43,7 +39,7 @@ jobs:
       - name: Build debug APK
         run: scripts/build.sh debug
 
-      - name: Upload APK to Release
+      - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v3
         with:
