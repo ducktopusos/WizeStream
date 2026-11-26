@@ -186,7 +186,6 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         player.getCurrentStreamInfo().ifPresent(info ->
                 sensitiveContentController.onMetadataChanged(info.getUrl()));
     }
-
     public void setupFromView() {
         org.schabi.newpipe.util.AppFonts.observe(binding.getRoot());
         initViews();
@@ -199,7 +198,6 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         org.schabi.newpipe.themes.ThemeIcons.apply(binding.shuffleButton, "shuffle");
         setupPlayerSeekOverlay();
     }
-
     private void initViews() {
         setupSubtitleView();
         binding.resizeTextView
