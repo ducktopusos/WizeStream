@@ -33,7 +33,7 @@ object SensitiveContent {
     const val NSFW_THRESHOLD = 0.5f
 
     /** Probability above which the gender classifier marks a face as female. */
-    const val FEMALE_THRESHOLD = 0.5f
+    const val FEMALE_THRESHOLD = 0.45f
 
     private val revealedUrls: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
     private val blurredUrls: MutableMap<String, String> = Collections.synchronizedMap(mutableMapOf())

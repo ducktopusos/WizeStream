@@ -98,7 +98,7 @@ object OnDeviceContentClassifier : ContentClassifier {
                 val crop = cropFace(bitmap, box) ?: return@mapNotNull null
                 val probabilities = classifyGender(interpreter, crop) ?: return@mapNotNull null
                 val female = probabilities[1]
-                if (female >= SensitiveContent.FEMALE_THRESHOLD && female >= probabilities[0]) {
+                if (female >= SensitiveContent.FEMALE_THRESHOLD) {
                     NormalizedRect(
                         left = (box.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
                         top = (box.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
@@ -147,8 +147,8 @@ object OnDeviceContentClassifier : ContentClassifier {
                 faceDetector = runCatching {
                     FaceDetection.getClient(
                         FaceDetectorOptions.Builder()
-                            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-                            .setMinFaceSize(0.08f)
+                            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
+                            .setMinFaceSize(0.05f)
                             .build()
                     )
                 }.onFailure { Log.w(TAG, "Face detector unavailable", it) }.getOrNull()
