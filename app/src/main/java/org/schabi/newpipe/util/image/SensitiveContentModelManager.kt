@@ -34,7 +34,9 @@ object SensitiveContentModelManager {
     private data class Model(val name: String, val url: String, val sha256: String)
 
     private val downloading = AtomicBoolean(false)
-    @Volatile private var state: State = State(Status.NOT_INSTALLED)
+
+    @Volatile
+    private var state: State = State(Status.NOT_INSTALLED)
     private val listeners = mutableSetOf<(State) -> Unit>()
     private val mainHandler = Handler(Looper.getMainLooper())
 

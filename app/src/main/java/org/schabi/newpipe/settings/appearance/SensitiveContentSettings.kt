@@ -69,11 +69,14 @@ object SensitiveContentSettings {
         pref.summary = when (state.status) {
             SensitiveContentModelManager.Status.INSTALLED ->
                 fragment.getString(R.string.sensitive_content_models_installed)
+
             SensitiveContentModelManager.Status.DOWNLOADING ->
                 fragment.getString(R.string.sensitive_content_models_downloading)
+
             SensitiveContentModelManager.Status.FAILED ->
                 state.message?.let { fragment.getString(R.string.sensitive_content_models_failed) + " " + it }
                     ?: fragment.getString(R.string.sensitive_content_models_failed)
+
             SensitiveContentModelManager.Status.NOT_INSTALLED ->
                 fragment.getString(R.string.sensitive_content_models_not_installed)
         }
