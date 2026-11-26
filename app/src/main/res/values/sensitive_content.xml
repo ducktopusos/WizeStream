@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sensitive_content_key" translatable="false">sensitive_content_mode</string>
+    <string name="sensitive_content_title">Sensitive content</string>
+    <string name="sensitive_content_off">Off</string>
+    <string name="sensitive_content_blur_all">Blur all thumbnails</string>
+    <string name="sensitive_content_nsfw_only">AI: NSFW only</string>
+    <string name="sensitive_content_nsfw_and_women">AI: NSFW and women</string>
+
+    <string-array name="sensitive_content_labels">
+        <item>@string/sensitive_content_off</item>
+        <item>@string/sensitive_content_blur_all</item>
+        <item>@string/sensitive_content_nsfw_only</item>
+        <item>@string/sensitive_content_nsfw_and_women</item>
+    </string-array>
+
+    <string-array name="sensitive_content_values" translatable="false">
+        <item>off</item>
+        <item>blur_all</item>
+        <item>nsfw_only</item>
+        <item>nsfw_and_women</item>
+    </string-array>
+</resources>

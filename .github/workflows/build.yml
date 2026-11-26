@@ -43,10 +43,11 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace -DskipFormatKtlint assembleDebug
 
-      - name: Run thumbnail blur unit tests
+      - name: Run sensitive content unit tests
         run: |
           ./gradlew --no-daemon --stacktrace -DskipFormatKtlint testDebugUnitTest \
-            --tests 'org.schabi.newpipe.util.image.ThumbnailBlurTest'
+            --tests 'org.schabi.newpipe.util.image.SensitiveContentTest' \
+            --tests 'org.schabi.newpipe.util.image.CoilHelperSoftwareImagesTest'
 
       - name: Show APK
         run: ls -lh app/build/outputs/apk/debug/

@@ -165,14 +165,14 @@ object CoilHelper {
         target: ImageView,
         images: List<Image>
     ) {
-        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_video, blur = true)
+        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_video, protect = true)
     }
 
     fun loadThumbnail(
         target: ImageView,
         url: String?
     ) {
-        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, blur = true)
+        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, protect = true)
     }
 
     fun clearImage(target: ImageView) {
@@ -239,7 +239,7 @@ object CoilHelper {
         images: List<Image>
     ) {
         val url = ImageStrategy.choosePreferredImage(images)
-        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, false, blur = true)
+        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, false, protect = true)
     }
 
     fun loadBanner(
@@ -265,27 +265,27 @@ object CoilHelper {
         target: ImageView,
         images: List<Image>
     ) {
-        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_playlist, blur = true)
+        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_playlist, protect = true)
     }
 
     fun loadPlaylistThumbnail(
         target: ImageView,
         url: String?
     ) {
-        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_playlist, blur = true)
+        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_playlist, protect = true)
     }
 
     private fun loadImageDefault(
         target: ImageView,
         images: List<Image>,
         @DrawableRes placeholderResId: Int,
-        blur: Boolean = false
+        protect: Boolean = false
     ) {
         loadImageDefault(
             target,
             ImageStrategy.choosePreferredImage(images),
             placeholderResId,
-            blur = blur
+            protect = protect
         )
     }
 
@@ -294,13 +294,48 @@ object CoilHelper {
         url: String?,
         @DrawableRes placeholderResId: Int,
         showPlaceholder: Boolean = true,
-        blur: Boolean = false
+        protect: Boolean = false
     ) {
+        // View holders are recycled; a previous protected image may have attached a
+        // tap-to-reveal handler that must not leak to the next item.
+        target.setOnClickListener(null)
+        target.isClickable = false
         val request =
-            getImageRequest(target.context, url, placeholderResId, showPlaceholder, blur)
+            getImageRequest(target.context, url, placeholderResId, showPlaceholder, protect)
                 .target(target)
+                .apply {
+                    if (protect) {
+                        listener(onSuccess = { _, _ ->
+                            installRevealHandler(target, url, placeholderResId, showPlaceholder)
+                        })
+                    }
+                }
                 .build()
         target.context.imageLoader.enqueue(request)
+    }
+
+    /**
+     * A blurred thumbnail reveals itself when tapped. The tap is consumed so a
+     * protected image is never opened by the same gesture that reveals it; after
+     * the reveal the image is no longer clickable and taps reach the list item.
+     */
+    private fun installRevealHandler(
+        target: ImageView,
+        url: String?,
+        @DrawableRes placeholderResId: Int,
+        showPlaceholder: Boolean
+    ) {
+        val mode = SensitiveContent.mode(target.context)
+        if (!SensitiveContent.shouldOfferReveal(url, mode)) {
+            return
+        }
+        val wasClickable = target.isClickable
+        target.setOnClickListener {
+            SensitiveContent.reveal(url)
+            target.setOnClickListener(null)
+            target.isClickable = wasClickable
+            loadImageDefault(target, url, placeholderResId, showPlaceholder, protect = true)
+        }
     }
 
     internal fun getImageRequest(
@@ -308,7 +343,7 @@ object CoilHelper {
         url: String?,
         @DrawableRes placeholderResId: Int,
         showPlaceholderWhileLoading: Boolean = true,
-        blur: Boolean = false
+        protect: Boolean = false
     ): ImageRequest.Builder {
         // if the URL was chosen with `choosePreferredImage` it will be null, but check again
         // `shouldLoadImages` in case the URL was chosen with `imageListToDbUrl` (which is the case
@@ -334,9 +369,11 @@ object CoilHelper {
         // on a software canvas even when the current target is hardware accelerated.
         val softwareImages = Build.VERSION.SDK_INT == Build.VERSION_CODES.Q ||
             org.schabi.newpipe.themes.ThemeChrome.requiresSoftwareImages(context)
-        val blurRadius = if (blur) ThumbnailBlur.radius(context) else 0
+        val mode = if (protect) SensitiveContent.mode(context) else SensitiveContent.OFF
+        val revealed = mode != SensitiveContent.OFF && SensitiveContent.isRevealed(takenUrl)
         val memoryCacheKey = when {
-            blurRadius > 0 -> ThumbnailBlur.memoryCacheKey(cacheUrl, blurRadius)
+            mode != SensitiveContent.OFF ->
+                SensitiveContent.memoryCacheKey(cacheUrl, mode, revealed)
             softwareImages -> cacheUrl?.let { "wizestream-software-backdrop:$it" }
             else -> cacheUrl
         }
@@ -356,8 +393,8 @@ object CoilHelper {
                 if (takenUrl != null || showPlaceholderWhileLoading) {
                     placeholder(placeholderResId)
                 }
-                if (blurRadius > 0) {
-                    transformations(ThumbnailBlurTransformation(blurRadius))
+                if (mode != SensitiveContent.OFF && !revealed) {
+                    transformations(SensitiveContentTransformation(context, mode, takenUrl))
                 }
             }
     }

@@ -27,10 +27,10 @@
 
     <ListPreference
         android:defaultValue="off"
-        android:entries="@array/thumbnail_blur_labels"
-        android:entryValues="@array/thumbnail_blur_values"
-        android:key="@string/thumbnail_blur_key"
-        android:title="@string/thumbnail_blur_title"
+        android:entries="@array/sensitive_content_labels"
+        android:entryValues="@array/sensitive_content_values"
+        android:key="@string/sensitive_content_key"
+        android:title="@string/sensitive_content_title"
         app:iconSpaceReserved="false"
         app:singleLineTitle="false"
         app:useSimpleSummaryProvider="true" />

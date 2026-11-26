@@ -1,0 +1,23 @@
+Bundled on-device models for sensitive content detection (HaramBlur-style).
+
+1) nsfw.tflite
+   Explicit-content classifier: Yahoo open_nsfw (2 classes: safe / explicit).
+   Source: https://github.com/yahoo/open_nsfw (BSD-2-Clause), converted to
+   TFLite and redistributed via https://github.com/hoyaaaa/nsfw_detector_flutter
+   (BSD-3-Clause). See open_nsfw-LICENSE.txt.
+   Input [1,224,224,3] float32, BGR with the VGG mean subtracted
+   (103.939 / 116.779 / 123.68); output [1,2] float32.
+   SHA-256: a476ef325f4f776602d944fd28133e945f77a74e37dafba37936110b35b7810d
+
+2) gender.tflite
+   Gender classifier used on detected faces (2 classes: male / female).
+   Source: https://github.com/shubham0204/Age-Gender_Estimation_TF-Android
+   (MIT License; model trained by that project's author on UTKFace).
+   See gender-model-LICENSE.txt.
+   Input [1,128,128,3] float32 normalized to [0,1]; output [1,2] float32 in the
+   order [male, female]. Expects a tight face crop.
+   SHA-256: 7ab000d530a005ccd605a2826485b23d08690d0e4fb23bc4589a5b03861750c0
+
+Faces are detected with ML Kit's bundled on-device face detector, the Android
+equivalent of the BlazeFace detector used by the HaramBlur browser extension.
+All inference happens locally; no bitmap ever leaves the device.
