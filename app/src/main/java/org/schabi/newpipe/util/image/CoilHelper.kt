@@ -303,39 +303,8 @@ object CoilHelper {
         val request =
             getImageRequest(target.context, url, placeholderResId, showPlaceholder, protect)
                 .target(target)
-                .apply {
-                    if (protect) {
-                        listener(onSuccess = { _, _ ->
-                            installRevealHandler(target, url, placeholderResId, showPlaceholder)
-                        })
-                    }
-                }
                 .build()
         target.context.imageLoader.enqueue(request)
-    }
-
-    /**
-     * A blurred thumbnail reveals itself when tapped. The tap is consumed so a
-     * protected image is never opened by the same gesture that reveals it; after
-     * the reveal the image is no longer clickable and taps reach the list item.
-     */
-    private fun installRevealHandler(
-        target: ImageView,
-        url: String?,
-        @DrawableRes placeholderResId: Int,
-        showPlaceholder: Boolean
-    ) {
-        val mode = SensitiveContent.mode(target.context)
-        if (!SensitiveContent.shouldOfferReveal(url, mode)) {
-            return
-        }
-        val wasClickable = target.isClickable
-        target.setOnClickListener {
-            SensitiveContent.reveal(url)
-            target.setOnClickListener(null)
-            target.isClickable = wasClickable
-            loadImageDefault(target, url, placeholderResId, showPlaceholder, protect = true)
-        }
     }
 
     internal fun getImageRequest(
