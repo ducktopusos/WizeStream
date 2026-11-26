@@ -466,7 +466,7 @@ dependencies {
     // On-device sensitive content detection (HaramBlur-style)
     implementation(libs.litert)
     implementation(libs.mlkit.face.detection)
-    implementation(libs.mlkit.object.detection)
+    implementation(libs.mlkit.obj.detection)
 
     // Markdown library for Android
     implementation(libs.noties.markwon.core)
