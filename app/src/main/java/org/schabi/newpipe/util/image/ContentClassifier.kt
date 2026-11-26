@@ -135,7 +135,6 @@ object OnDeviceContentClassifier : ContentClassifier {
         }.onFailure { Log.w(TAG, "Object detection failed", it) }.getOrDefault(emptyList())
     }
 
-
     private fun expandFaceToBody(region: NormalizedRect): NormalizedRect {
         val w = region.right - region.left
         val h = region.bottom - region.top
