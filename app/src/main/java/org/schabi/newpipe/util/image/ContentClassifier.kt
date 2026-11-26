@@ -94,14 +94,12 @@ object OnDeviceContentClassifier : ContentClassifier {
         return runCatching {
             val image = InputImage.fromBitmap(bitmap, 0)
             val faces = Tasks.await(detector.process(image))
-            val personBoxes = detectPersonBoxes(image)
             faces.mapNotNull { face ->
                 val box = face.boundingBox
                 val crop = cropFace(bitmap, box) ?: return@mapNotNull null
                 val probabilities = classifyGender(interpreter, crop) ?: return@mapNotNull null
                 val female = probabilities[1]
                 if (female >= SensitiveContent.FEMALE_THRESHOLD) {
-                    personBoxForFace(box, personBoxes, bitmap)?.let { return@mapNotNull it }
                     expandFaceToBody(
                         NormalizedRect(
                             left = (box.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
@@ -115,19 +113,6 @@ object OnDeviceContentClassifier : ContentClassifier {
                 }
             }
         }.onFailure { Log.w(TAG, "Face/gender inference failed", it) }.getOrDefault(emptyList())
-    }
-
-    private fun detectPersonBoxes(image: InputImage): List<Rect> {
-        val detector = objectDetector ?: return emptyList()
-        return runCatching {
-            Tasks.await(detector.process(image))
-                .filter { obj ->
-                    // Default object detector has coarse categories, not person.
-                    // Keep prominent objects; we'll only use ones containing a female face.
-                    obj.boundingBox.width() > 0 && obj.boundingBox.height() > 0
-                }
-                .map { it.boundingBox }
-        }.onFailure { Log.w(TAG, "Object detection failed", it) }.getOrDefault(emptyList())
     }
 
     private fun expandFaceToBody(region: NormalizedRect): NormalizedRect {
@@ -145,43 +130,6 @@ object OnDeviceContentClassifier : ContentClassifier {
             bottom = bottom
         )
     }
-    private fun personBoxForFace(face: Rect, personBoxes: List<Rect>, bitmap: Bitmap): NormalizedRect? {
-        val cx = face.centerX()
-        val cy = face.centerY()
-        val match = personBoxes.firstOrNull { it.contains(cx, cy) }
-            ?: personBoxes.minByOrNull { box ->
-                val dx = (box.centerX() - cx).toFloat()
-                val dy = (box.centerY() - cy).toFloat()
-                dx * dx + dy * dy
-            }?.takeIf { box ->
-                val dx = (box.centerX() - cx).toFloat() / bitmap.width
-                val dy = (box.centerY() - cy).toFloat() / bitmap.height
-                dx * dx + dy * dy < 0.08f
-            }
-            ?: return null
-        return NormalizedRect(
-            left = (match.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
-            top = (match.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
-            right = (match.right.toFloat() / bitmap.width).coerceIn(0f, 1f),
-            bottom = (match.bottom.toFloat() / bitmap.height).coerceIn(0f, 1f)
-        )
-    }
-
-    fun reset() {
-        synchronized(initLock) {
-            synchronized(nsfwLock) {
-                runCatching { nsfwInterpreter?.close() }
-                nsfwInterpreter = null
-            }
-            synchronized(genderLock) {
-                runCatching { genderInterpreter?.close() }
-                genderInterpreter = null
-            }
-            // Keep face detector; it is lightweight and independent of model files.
-            initialized = false
-        }
-    }
-
     private fun ensureInitialized(context: Context) {
         if (initialized) {
             return
