@@ -33,7 +33,6 @@ class VideoSensitiveContentController(
     private val handler = Handler(Looper.getMainLooper())
     private val sampling = AtomicBoolean(false)
     private var currentStreamUrl: String? = null
-    private var revealedForStream = false
     private var destroyed = false
 
     private val sampleRunnable = object : Runnable {
@@ -45,7 +44,6 @@ class VideoSensitiveContentController(
 
     fun onMetadataChanged(streamUrl: String?) {
         currentStreamUrl = streamUrl
-        revealedForStream = false
         hideOverlay()
         scheduleSample(300)
     }
@@ -63,7 +61,6 @@ class VideoSensitiveContentController(
     }
 
     fun onTransition() {
-        revealedForStream = false
         hideOverlay()
     }
 
@@ -93,14 +90,7 @@ class VideoSensitiveContentController(
         val url = currentStreamUrl ?: player.playQueue?.item?.url
         if (url != currentStreamUrl) {
             currentStreamUrl = url
-            revealedForStream = false
             hideOverlay()
-        }
-
-        if (revealedForStream) {
-            hideOverlay()
-            if (player.isPlaying) scheduleSample(SAMPLE_INTERVAL_MS)
-            return
         }
 
         if (!player.isPlaying) return
@@ -188,7 +178,7 @@ class VideoSensitiveContentController(
     }
 
     private fun applyResult(source: Bitmap, result: DetectionResult) {
-        if (revealedForStream || destroyed) {
+        if (destroyed) {
             source.recycle()
             return
         }
@@ -212,12 +202,7 @@ class VideoSensitiveContentController(
         val mapped = listOf(NormalizedRect(0f, 0f, 1f, 1f))
         overlay.setRegions(mapToOverlay(mapped), blurred, coverAll = true)
         overlay.isVisible = true
-        overlay.isClickable = true
-        overlay.setOnClickListener {
-            revealedForStream = true
-            hideOverlay()
-            if (player.isPlaying) scheduleSample(SAMPLE_INTERVAL_MS)
-        }
+        overlay.isClickable = false
     }
 
     private fun showRegions(regions: List<NormalizedRect>, blurredFrame: Bitmap) {
@@ -230,12 +215,7 @@ class VideoSensitiveContentController(
         }
         overlay.setRegions(mapped, blurredFrame, coverAll = false)
         overlay.isVisible = true
-        overlay.isClickable = true
-        overlay.setOnClickListener {
-            revealedForStream = true
-            hideOverlay()
-            if (player.isPlaying) scheduleSample(SAMPLE_INTERVAL_MS)
-        }
+        overlay.isClickable = false
     }
 
     private fun hideOverlay() {
