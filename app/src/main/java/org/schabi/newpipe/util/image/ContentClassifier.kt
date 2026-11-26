@@ -130,6 +130,22 @@ object OnDeviceContentClassifier : ContentClassifier {
             bottom = bottom
         )
     }
+
+    fun reset() {
+        synchronized(initLock) {
+            synchronized(nsfwLock) {
+                runCatching { nsfwInterpreter?.close() }
+                nsfwInterpreter = null
+            }
+            synchronized(genderLock) {
+                runCatching { genderInterpreter?.close() }
+                genderInterpreter = null
+            }
+            // Keep face detector; it is lightweight and independent of model files.
+            initialized = false
+        }
+    }
+
     private fun ensureInitialized(context: Context) {
         if (initialized) {
             return
