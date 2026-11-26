@@ -30,11 +30,21 @@ class SensitiveContentTransformation(
         }
 
         return withContext(Dispatchers.IO) {
+            if (SensitiveContent.requiresAiModels(mode) &&
+                !SensitiveContentModelManager.isInstalled(context)
+            ) {
+                SensitiveContentModelManager.ensureDownloaded(context)
+                SensitiveContent.markBlurred(url, mode)
+                return@withContext blurBitmap(
+                    input,
+                    blurRadiusFor(input.width, input.height, SensitiveContent.intensity(context))
+                )
+            }
             if (!isSensitive(input)) {
                 return@withContext input
             }
             SensitiveContent.markBlurred(url, mode)
-            blurBitmap(input, blurRadiusFor(input.width, input.height))
+            blurBitmap(input, blurRadiusFor(input.width, input.height, SensitiveContent.intensity(context)))
         }
     }
 

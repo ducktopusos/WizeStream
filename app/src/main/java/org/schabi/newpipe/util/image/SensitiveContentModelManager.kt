@@ -1,0 +1,137 @@
+package org.schabi.newpipe.util.image
+
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicBoolean
+
+object SensitiveContentModelManager {
+    enum class Status { NOT_INSTALLED, DOWNLOADING, INSTALLED, FAILED }
+
+    data class State(val status: Status, val message: String? = null)
+
+    private const val RELEASE_BASE =
+        "https://github.com/ducktopusos/WizeStream/releases/download/sensitive-content-models-v1"
+
+    private val MODELS = listOf(
+        Model(
+            name = "nsfw.tflite",
+            url = "$RELEASE_BASE/nsfw.tflite",
+            sha256 = "a476ef325f4f776602d944fd28133e945f77a74e37dafba37936110b35b7810d"
+        ),
+        Model(
+            name = "gender.tflite",
+            url = "$RELEASE_BASE/gender.tflite",
+            sha256 = "7ab000d530a005ccd605a2826485b23d08690d0e4fb23bc4589a5b03861750c0"
+        )
+    )
+
+    private data class Model(val name: String, val url: String, val sha256: String)
+
+    private val downloading = AtomicBoolean(false)
+    @Volatile private var state: State = State(Status.NOT_INSTALLED)
+    private val listeners = mutableSetOf<(State) -> Unit>()
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    fun modelsDir(context: Context): File = File(context.noBackupFilesDir ?: context.filesDir, "sensitive_content_models")
+
+    fun modelFile(context: Context, name: String): File = File(modelsDir(context), name)
+
+    fun isInstalled(context: Context): Boolean = MODELS.all { model ->
+        val file = modelFile(context, model.name)
+        file.isFile && file.length() > 0
+    }
+
+    fun getState(context: Context): State {
+        if (state.status != Status.DOWNLOADING) {
+            state = if (isInstalled(context)) State(Status.INSTALLED) else State(Status.NOT_INSTALLED)
+        }
+        return state
+    }
+
+    fun addListener(listener: (State) -> Unit) {
+        synchronized(listeners) { listeners.add(listener) }
+    }
+
+    fun removeListener(listener: (State) -> Unit) {
+        synchronized(listeners) { listeners.remove(listener) }
+    }
+
+    fun ensureDownloaded(context: Context, force: Boolean = false) {
+        val appContext = context.applicationContext
+        if (!force && isInstalled(appContext)) {
+            updateState(State(Status.INSTALLED))
+            return
+        }
+        if (!downloading.compareAndSet(false, true)) {
+            return
+        }
+        updateState(State(Status.DOWNLOADING))
+        Thread {
+            try {
+                val dir = modelsDir(appContext)
+                if (!dir.exists()) dir.mkdirs()
+                for (model in MODELS) {
+                    downloadModel(model, File(dir, model.name))
+                }
+                OnDeviceContentClassifier.reset()
+                updateState(State(Status.INSTALLED))
+            } catch (t: Throwable) {
+                updateState(State(Status.FAILED, t.message))
+            } finally {
+                downloading.set(false)
+            }
+        }.start()
+    }
+
+    private fun downloadModel(model: Model, target: File) {
+        val tmp = File(target.parentFile, target.name + ".tmp")
+        val connection = (URL(model.url).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 20_000
+            readTimeout = 60_000
+            instanceFollowRedirects = true
+        }
+        try {
+            connection.inputStream.use { input ->
+                FileOutputStream(tmp).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            val digest = MessageDigest.getInstance("SHA-256")
+            tmp.inputStream().use { input ->
+                val buf = ByteArray(8192)
+                while (true) {
+                    val read = input.read(buf)
+                    if (read < 0) break
+                    digest.update(buf, 0, read)
+                }
+            }
+            val sha = digest.digest().joinToString("") { "%02x".format(it) }
+            if (!sha.equals(model.sha256, ignoreCase = true)) {
+                tmp.delete()
+                throw IllegalStateException("Checksum mismatch for ${model.name}")
+            }
+            if (target.exists()) target.delete()
+            if (!tmp.renameTo(target)) {
+                tmp.copyTo(target, overwrite = true)
+                tmp.delete()
+            }
+        } finally {
+            connection.disconnect()
+            if (tmp.exists() && target.exists()) tmp.delete()
+        }
+    }
+
+    private fun updateState(newState: State) {
+        state = newState
+        val snapshot = synchronized(listeners) { listeners.toList() }
+        mainHandler.post {
+            snapshot.forEach { it(newState) }
+        }
+    }
+}

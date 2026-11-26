@@ -10,14 +10,15 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import org.tensorflow.lite.Interpreter
 
-private const val NSFW_ASSET = "models/nsfw.tflite"
-private const val GENDER_ASSET = "models/gender.tflite"
+private const val NSFW_MODEL = "nsfw.tflite"
+private const val GENDER_MODEL = "gender.tflite"
 private const val NSFW_INPUT_SIZE = 224
 private const val NSFW_SCALE_SIZE = 256
 private const val GENDER_INPUT_SIZE = 128
@@ -109,6 +110,17 @@ object OnDeviceContentClassifier : ContentClassifier {
         }.onFailure { Log.w(TAG, "Face/gender inference failed", it) }.getOrDefault(emptyList())
     }
 
+    fun reset() {
+        synchronized(lock) {
+            runCatching { nsfwInterpreter?.close() }
+            runCatching { genderInterpreter?.close() }
+            nsfwInterpreter = null
+            genderInterpreter = null
+            // Keep face detector; it is lightweight and independent of model files.
+            initialized = false
+        }
+    }
+
     private fun ensureInitialized(context: Context) {
         if (initialized) {
             return
@@ -118,32 +130,34 @@ object OnDeviceContentClassifier : ContentClassifier {
                 return
             }
             val appContext = context.applicationContext
-            nsfwInterpreter = loadInterpreter(appContext, NSFW_ASSET)
-            genderInterpreter = loadInterpreter(appContext, GENDER_ASSET)
-            faceDetector = runCatching {
-                FaceDetection.getClient(
-                    FaceDetectorOptions.Builder()
-                        .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-                        .setMinFaceSize(0.08f)
-                        .build()
-                )
-            }.onFailure { Log.w(TAG, "Face detector unavailable", it) }.getOrNull()
-            initialized = true
+            if (!SensitiveContentModelManager.isInstalled(appContext)) {
+                // Download on demand when an AI mode is active.
+                SensitiveContentModelManager.ensureDownloaded(appContext)
+                return
+            }
+            nsfwInterpreter = loadInterpreter(SensitiveContentModelManager.modelFile(appContext, NSFW_MODEL))
+            genderInterpreter = loadInterpreter(SensitiveContentModelManager.modelFile(appContext, GENDER_MODEL))
+            if (faceDetector == null) {
+                faceDetector = runCatching {
+                    FaceDetection.getClient(
+                        FaceDetectorOptions.Builder()
+                            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                            .setMinFaceSize(0.08f)
+                            .build()
+                    )
+                }.onFailure { Log.w(TAG, "Face detector unavailable", it) }.getOrNull()
+            }
+            initialized = nsfwInterpreter != null || genderInterpreter != null
         }
     }
 
-    private fun loadInterpreter(context: Context, asset: String): Interpreter? = runCatching {
-        context.assets.openFd(asset).use { descriptor ->
-            FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
-                val mapped = channel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    descriptor.startOffset,
-                    descriptor.declaredLength
-                )
-                Interpreter(mapped, Interpreter.Options().apply { setNumThreads(2) })
-            }
+    private fun loadInterpreter(file: File): Interpreter? = runCatching {
+        if (!file.isFile) return@runCatching null
+        FileInputStream(file).channel.use { channel ->
+            val mapped = channel.map(FileChannel.MapMode.READ_ONLY, 0, file.length())
+            Interpreter(mapped, Interpreter.Options().apply { setNumThreads(2) })
         }
-    }.onFailure { Log.w(TAG, "Could not load $asset", it) }.getOrNull()
+    }.onFailure { Log.w(TAG, "Could not load ${file.name}", it) }.getOrNull()
 
     private fun classifyGender(interpreter: Interpreter, crop: Bitmap): FloatArray? = runCatching {
         val output = Array(1) { FloatArray(2) }

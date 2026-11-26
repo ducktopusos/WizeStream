@@ -109,6 +109,15 @@ class VideoSensitiveContentController(
             return
         }
 
+        if (SensitiveContent.requiresAiModels(mode) &&
+            !SensitiveContentModelManager.isInstalled(context)
+        ) {
+            SensitiveContentModelManager.ensureDownloaded(context)
+            showFullOverlay(null)
+            if (player.isPlaying) scheduleSample(SAMPLE_INTERVAL_MS)
+            return
+        }
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             // PixelCopy unavailable on API 23; be conservative.
             showFullOverlay(null)
@@ -183,11 +192,11 @@ class VideoSensitiveContentController(
             return
         }
         if (result.fullFrame) {
-            val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height))
+            val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
             if (blurred != source) source.recycle()
             showFullOverlay(blurred)
         } else if (result.regions.isNotEmpty()) {
-            val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height))
+            val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
             if (blurred != source) source.recycle()
             showRegions(result.regions, blurred)
         } else {

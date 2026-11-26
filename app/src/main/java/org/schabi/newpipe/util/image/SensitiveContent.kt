@@ -1,7 +1,6 @@
 package org.schabi.newpipe.util.image
 
 import android.content.Context
-import android.graphics.Bitmap
 import androidx.preference.PreferenceManager
 import java.util.Collections
 
@@ -19,11 +18,16 @@ import java.util.Collections
  */
 object SensitiveContent {
     const val PREFERENCE_KEY = "sensitive_content_mode"
+    const val INTENSITY_KEY = "sensitive_content_intensity"
 
     const val OFF = "off"
     const val BLUR_ALL = "blur_all"
     const val NSFW_ONLY = "nsfw_only"
     const val NSFW_AND_WOMEN = "nsfw_and_women"
+
+    const val INTENSITY_LOW = "low"
+    const val INTENSITY_MEDIUM = "medium"
+    const val INTENSITY_HIGH = "high"
 
     /** Probability above which the NSFW classifier marks a thumbnail as explicit. */
     const val NSFW_THRESHOLD = 0.5f
@@ -41,7 +45,16 @@ object SensitiveContent {
         ?: OFF
 
     @JvmStatic
+    fun intensity(context: Context): String = PreferenceManager
+        .getDefaultSharedPreferences(context)
+        .getString(INTENSITY_KEY, INTENSITY_MEDIUM)
+        ?: INTENSITY_MEDIUM
+
+    @JvmStatic
     fun isEnabled(context: Context): Boolean = mode(context) != OFF
+
+    @JvmStatic
+    fun requiresAiModels(mode: String): Boolean = mode == NSFW_ONLY || mode == NSFW_AND_WOMEN
 
     @JvmStatic
     fun isRevealed(url: String?): Boolean = url != null && revealedUrls.contains(url)
@@ -79,7 +92,7 @@ object SensitiveContent {
  * Gaussian blur while staying linear in the number of pixels, which keeps the
  * cost independent of the radius.
  */
-internal fun blurBitmap(input: Bitmap, radius: Int): Bitmap {
+internal fun blurBitmap(input: android.graphics.Bitmap, radius: Int): android.graphics.Bitmap {
     val width = input.width
     val height = input.height
     if (radius <= 0 || width <= 1 || height <= 1) {
@@ -98,13 +111,21 @@ internal fun blurBitmap(input: Bitmap, radius: Int): Bitmap {
         current = result
     }
 
-    return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
+    return android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888).apply {
         setPixels(result, 0, width, 0, 0, width, height)
     }
 }
 
-/** Radius proportional to the thumbnail size, clamped so small images stay readable. */
-internal fun blurRadiusFor(width: Int, height: Int): Int = (minOf(width, height) / 20).coerceIn(6, 32)
+/** Radius proportional to the thumbnail size and the user-selected intensity. */
+internal fun blurRadiusFor(width: Int, height: Int, intensity: String = SensitiveContent.INTENSITY_MEDIUM): Int {
+    val minSide = minOf(width, height)
+    val (divisor, minRadius, maxRadius) = when (intensity) {
+        SensitiveContent.INTENSITY_LOW -> Triple(30, 4, 16)
+        SensitiveContent.INTENSITY_HIGH -> Triple(12, 10, 48)
+        else -> Triple(20, 6, 32)
+    }
+    return (minSide / divisor).coerceIn(minRadius, maxRadius)
+}
 
 private const val BLUR_PASSES = 2
 

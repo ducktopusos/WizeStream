@@ -7,6 +7,18 @@
     <string name="sensitive_content_nsfw_only">AI: NSFW only</string>
     <string name="sensitive_content_nsfw_and_women">AI: NSFW and women</string>
 
+    <string name="sensitive_content_intensity_key" translatable="false">sensitive_content_intensity</string>
+    <string name="sensitive_content_intensity_title">Blur intensity</string>
+    <string name="sensitive_content_intensity_low">Low</string>
+    <string name="sensitive_content_intensity_medium">Medium</string>
+    <string name="sensitive_content_intensity_high">High</string>
+
+    <string name="sensitive_content_models_title">AI detection models</string>
+    <string name="sensitive_content_models_not_installed">Not installed. Select an AI option to download them.</string>
+    <string name="sensitive_content_models_downloading">Downloading AI detection models…</string>
+    <string name="sensitive_content_models_installed">Installed</string>
+    <string name="sensitive_content_models_failed">Download failed. Tap to retry.</string>
+
     <string-array name="sensitive_content_labels">
         <item>@string/sensitive_content_off</item>
         <item>@string/sensitive_content_blur_all</item>
@@ -19,5 +31,17 @@
         <item>blur_all</item>
         <item>nsfw_only</item>
         <item>nsfw_and_women</item>
+    </string-array>
+
+    <string-array name="sensitive_content_intensity_labels">
+        <item>@string/sensitive_content_intensity_low</item>
+        <item>@string/sensitive_content_intensity_medium</item>
+        <item>@string/sensitive_content_intensity_high</item>
+    </string-array>
+
+    <string-array name="sensitive_content_intensity_values" translatable="false">
+        <item>low</item>
+        <item>medium</item>
+        <item>high</item>
     </string-array>
 </resources>

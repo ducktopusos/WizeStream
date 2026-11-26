@@ -36,6 +36,22 @@
         app:useSimpleSummaryProvider="true" />
 
     <ListPreference
+        android:defaultValue="medium"
+        android:entries="@array/sensitive_content_intensity_labels"
+        android:entryValues="@array/sensitive_content_intensity_values"
+        android:key="@string/sensitive_content_intensity_key"
+        android:title="@string/sensitive_content_intensity_title"
+        app:iconSpaceReserved="false"
+        app:singleLineTitle="false"
+        app:useSimpleSummaryProvider="true" />
+
+    <Preference
+        android:key="sensitive_content_models"
+        android:title="@string/sensitive_content_models_title"
+        app:iconSpaceReserved="false"
+        app:singleLineTitle="false" />
+
+    <ListPreference
         android:defaultValue="@string/default_theme_value"
         android:entries="@array/theme_description_list"
         android:entryValues="@array/theme_values_list"

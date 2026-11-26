@@ -184,6 +184,15 @@ class SensitiveContentTest {
     }
 
     @Test
+    fun blurRadiusRespectsIntensity() {
+        val low = blurRadiusFor(640, 360, SensitiveContent.INTENSITY_LOW)
+        val medium = blurRadiusFor(640, 360, SensitiveContent.INTENSITY_MEDIUM)
+        val high = blurRadiusFor(640, 360, SensitiveContent.INTENSITY_HIGH)
+        assertTrue(low < medium)
+        assertTrue(medium < high)
+    }
+
+    @Test
     fun nsfwInputUsesBgrOrderWithVggMeanSubtracted() {
         val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(Color.rgb(10, 20, 30))

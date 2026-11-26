@@ -1,4 +1,8 @@
-Bundled on-device models for sensitive content detection (HaramBlur-style).
+On-device models for sensitive content detection (HaramBlur-style).
+
+These models are NOT bundled in the APK. When the user enables an AI detection
+mode, WizeStream downloads them on demand to app-private storage from the
+project's GitHub release assets and verifies their SHA-256 before use.
 
 1) nsfw.tflite
    Explicit-content classifier: Yahoo open_nsfw (2 classes: safe / explicit).
@@ -18,6 +22,5 @@ Bundled on-device models for sensitive content detection (HaramBlur-style).
    order [male, female]. Expects a tight face crop.
    SHA-256: 7ab000d530a005ccd605a2826485b23d08690d0e4fb23bc4589a5b03861750c0
 
-Faces are detected with ML Kit's bundled on-device face detector, the Android
-equivalent of the BlazeFace detector used by the HaramBlur browser extension.
-All inference happens locally; no bitmap ever leaves the device.
+Faces are detected with ML Kit's bundled on-device face detector. All
+inference happens locally; no bitmap ever leaves the device.
