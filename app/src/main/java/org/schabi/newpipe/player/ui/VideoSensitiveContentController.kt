@@ -37,6 +37,7 @@ class VideoSensitiveContentController(
     private var lastSignature: LongArray? = null
     private var lastResult: DetectionResult? = null
     private var stableSamples = 0
+    private var awaitingClassification = false
 
     private val sampleRunnable = object : Runnable {
         override fun run() {
@@ -50,15 +51,17 @@ class VideoSensitiveContentController(
         lastSignature = null
         lastResult = null
         stableSamples = 0
-        hideOverlay()
+        armCoverageIfNeeded()
         scheduleSample(300)
     }
 
     fun onRenderedFirstFrame() {
+        armCoverageIfNeeded()
         scheduleSample(100)
     }
 
     fun onPlaying() {
+        armCoverageIfNeeded()
         scheduleSample(250)
     }
 
@@ -70,6 +73,7 @@ class VideoSensitiveContentController(
         lastSignature = null
         lastResult = null
         stableSamples = 0
+        awaitingClassification = false
         hideOverlay()
     }
 
@@ -102,8 +106,11 @@ class VideoSensitiveContentController(
             lastSignature = null
             lastResult = null
             stableSamples = 0
+            awaitingClassification = false
             return
         }
+
+        armCoverageIfNeeded()
 
         val url = currentStreamUrl ?: player.playQueue?.item?.url
         if (url != currentStreamUrl) {
@@ -111,7 +118,8 @@ class VideoSensitiveContentController(
             lastSignature = null
             lastResult = null
             stableSamples = 0
-            hideOverlay()
+            awaitingClassification = true
+            showFullOverlay(null)
         }
 
         if (!player.isPlaying) return
@@ -165,6 +173,7 @@ class VideoSensitiveContentController(
                         return@post
                     }
                     bitmap.recycle()
+                    awaitingClassification = false
                     if (!result.hasSensitive) {
                         hideOverlay()
                     }
@@ -233,6 +242,7 @@ class VideoSensitiveContentController(
             source.recycle()
             return
         }
+        awaitingClassification = false
         if (result.fullFrame) {
             val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
             if (blurred != source) source.recycle()
@@ -267,6 +277,18 @@ class VideoSensitiveContentController(
         overlay.setRegions(mapped, blurredFrame, coverAll = false)
         overlay.isVisible = true
         overlay.isClickable = false
+    }
+
+    private fun armCoverageIfNeeded() {
+        val mode = SensitiveContent.mode(binding.root.context)
+        if (mode == SensitiveContent.OFF) {
+            awaitingClassification = false
+            return
+        }
+        if (!awaitingClassification && lastResult == null) {
+            awaitingClassification = true
+            showFullOverlay(null)
+        }
     }
 
     private fun hideOverlay() {
