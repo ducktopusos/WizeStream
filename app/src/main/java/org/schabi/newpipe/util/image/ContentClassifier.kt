@@ -10,10 +10,6 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
-import com.google.mlkit.vision.objects.DetectedObject
-import com.google.mlkit.vision.objects.ObjectDetection
-import com.google.mlkit.vision.objects.ObjectDetector
-import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -76,7 +72,6 @@ object OnDeviceContentClassifier : ContentClassifier {
     private var nsfwInterpreter: Interpreter? = null
     private var genderInterpreter: Interpreter? = null
     private var faceDetector: FaceDetector? = null
-    private var objectDetector: ObjectDetector? = null
 
     override fun nsfwScore(context: Context, bitmap: Bitmap): Float? {
         ensureInitialized(context)
@@ -212,17 +207,6 @@ object OnDeviceContentClassifier : ContentClassifier {
                             .build()
                     )
                 }.onFailure { Log.w(TAG, "Face detector unavailable", it) }.getOrNull()
-            }
-            if (objectDetector == null) {
-                objectDetector = runCatching {
-                    ObjectDetection.getClient(
-                        ObjectDetectorOptions.Builder()
-                            .setDetectorMode(ObjectDetectorOptions.SINGLE_IMAGE_MODE)
-                            .enableMultipleObjects()
-                            .enableClassification()
-                            .build()
-                    )
-                }.onFailure { Log.w(TAG, "Object detector unavailable", it) }.getOrNull()
             }
             initialized = nsfwInterpreter != null || genderInterpreter != null
         }

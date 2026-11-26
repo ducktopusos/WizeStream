@@ -38,7 +38,6 @@ class VideoSensitiveContentController(
     private var lastResult: DetectionResult? = null
     private var stableSamples = 0
     private var awaitingClassification = false
-    private var pausedForGate = false
 
     private val sampleRunnable = object : Runnable {
         override fun run() {
@@ -67,7 +66,6 @@ class VideoSensitiveContentController(
     }
 
     fun onPaused() {
-        if (pausedForGate) return
         handler.removeCallbacks(sampleRunnable)
     }
 
@@ -94,6 +92,7 @@ class VideoSensitiveContentController(
     }
 
     private fun nextInterval(): Long = when {
+        awaitingClassification -> 250L
         lastResult?.hasSensitive == true -> SAMPLE_INTERVAL_ACTIVE_MS
         stableSamples >= 2 -> SAMPLE_INTERVAL_STABLE_MS
         else -> SAMPLE_INTERVAL_DEFAULT_MS
@@ -124,7 +123,7 @@ class VideoSensitiveContentController(
             showFullOverlay(null)
         }
 
-        if (!player.isPlaying && !pausedForGate) return
+        if (!player.isPlaying) return
 
         if (mode == SensitiveContent.BLUR_ALL) {
             captureAndApply(mode)
@@ -184,11 +183,6 @@ class VideoSensitiveContentController(
                 return@capture
             }
 
-            val shouldGate = !pausedForGate && player.isPlaying
-            if (shouldGate) {
-                pausedForGate = true
-                player.pause()
-            }
             Thread {
                 val result = try {
                     detect(bitmap, mode)
@@ -199,14 +193,12 @@ class VideoSensitiveContentController(
                     sampling.set(false)
                     if (destroyed) {
                         bitmap.recycle()
-                        resumeAfterGate()
                         return@post
                     }
                     stableSamples = 0
                     lastSignature = signature
                     lastResult = result
                     applyResult(bitmap, result)
-                    resumeAfterGate()
                 }
             }.start()
         }
@@ -297,14 +289,6 @@ class VideoSensitiveContentController(
         if (!awaitingClassification && lastResult == null) {
             awaitingClassification = true
             showFullOverlay(null)
-        }
-    }
-
-    private fun resumeAfterGate() {
-        if (!pausedForGate || destroyed) return
-        pausedForGate = false
-        if (!player.isPlaying) {
-            player.play()
         }
     }
 
@@ -428,9 +412,9 @@ class VideoSensitiveContentController(
     }
 
     companion object {
-        private const val SAMPLE_INTERVAL_ACTIVE_MS = 1200L
-        private const val SAMPLE_INTERVAL_DEFAULT_MS = 1800L
-        private const val SAMPLE_INTERVAL_STABLE_MS = 2600L
+        private const val SAMPLE_INTERVAL_ACTIVE_MS = 800L
+        private const val SAMPLE_INTERVAL_DEFAULT_MS = 1200L
+        private const val SAMPLE_INTERVAL_STABLE_MS = 2000L
         private const val SAMPLE_SCALE = 6
         private const val MAX_CAPTURE_SIZE = 192
         private const val SIGNATURE_SIZE = 12
