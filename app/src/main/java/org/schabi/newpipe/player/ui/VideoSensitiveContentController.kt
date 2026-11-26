@@ -14,6 +14,7 @@ import org.schabi.newpipe.player.Player
 import org.schabi.newpipe.util.image.NormalizedRect
 import org.schabi.newpipe.util.image.OnDeviceContentClassifier
 import org.schabi.newpipe.util.image.SensitiveContent
+import org.schabi.newpipe.util.image.SensitiveContentModelManager
 import org.schabi.newpipe.util.image.blurBitmap
 import org.schabi.newpipe.util.image.blurRadiusFor
 
