@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Rect
 import androidx.preference.PreferenceManager
 import coil3.size.Size
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -29,9 +30,17 @@ class SensitiveContentTest {
             .commit()
     }
 
+    private fun installDummyModels() {
+        val dir = SensitiveContentModelManager.modelsDir(context)
+        if (!dir.exists()) dir.mkdirs()
+        File(dir, "nsfw.tflite").writeBytes(byteArrayOf(0))
+        File(dir, "gender.tflite").writeBytes(byteArrayOf(0))
+    }
+
     @After
     fun reset() {
         setMode(SensitiveContent.OFF)
+        SensitiveContentModelManager.modelsDir(context).deleteRecursively()
     }
 
     private class FakeClassifier(
@@ -126,6 +135,7 @@ class SensitiveContentTest {
 
     @Test
     fun nsfwOnlyBlursOnlyExplicitThumbnails() = runBlocking {
+        installDummyModels()
         val input = testBitmap()
         val transformation = SensitiveContentTransformation(
             context,
@@ -147,6 +157,7 @@ class SensitiveContentTest {
 
     @Test
     fun womenModeBlursThumbnailsWithAFemaleFace() = runBlocking {
+        installDummyModels()
         val input = testBitmap()
         val withWoman = SensitiveContentTransformation(
             context,
