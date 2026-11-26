@@ -160,7 +160,9 @@ class VideoSensitiveContentController(
             SensitiveContent.NSFW_THRESHOLD
         return when (mode) {
             SensitiveContent.BLUR_ALL -> DetectionResult(emptyList(), true)
+
             SensitiveContent.NSFW_ONLY -> DetectionResult(emptyList(), explicit)
+
             SensitiveContent.NSFW_AND_WOMEN -> {
                 if (explicit) {
                     DetectionResult(emptyList(), true)
@@ -170,6 +172,7 @@ class VideoSensitiveContentController(
                     DetectionResult(regions, false)
                 }
             }
+
             else -> DetectionResult(emptyList(), false)
         }
     }
@@ -251,8 +254,11 @@ class VideoSensitiveContentController(
             val top = (offsetTop + r.top * scaleY).coerceIn(0f, 1f)
             val right = (offsetLeft + r.right * scaleX).coerceIn(0f, 1f)
             val bottom = (offsetTop + r.bottom * scaleY).coerceIn(0f, 1f)
-            if (right - left < 0.01f || bottom - top < 0.01f) null
-            else NormalizedRect(left, top, right, bottom)
+            if (right - left < 0.01f || bottom - top < 0.01f) {
+                null
+            } else {
+                NormalizedRect(left, top, right, bottom)
+            }
         }
     }
 
