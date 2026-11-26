@@ -273,18 +273,18 @@ class VideoSensitiveContentController(
     }
 
     private fun expandRegion(region: NormalizedRect): NormalizedRect {
-        // Expand face box to cover more of the head/hair area for privacy.
+        // Expand detected female face to approximate the full body.
         val w = region.right - region.left
         val h = region.bottom - region.top
         val cx = (region.left + region.right) / 2f
-        val cy = (region.top + region.bottom) / 2f
-        val nw = w * 1.8f
-        val nh = h * 2.2f
+        val top = (region.top - h * 0.6f).coerceIn(0f, 1f)
+        val bottom = (region.bottom + h * 6.5f).coerceIn(0f, 1f)
+        val halfWidth = (w * 2.2f).coerceAtLeast(h * 1.4f)
         return NormalizedRect(
-            left = (cx - nw / 2f).coerceIn(0f, 1f),
-            top = (cy - nh / 2f).coerceIn(0f, 1f),
-            right = (cx + nw / 2f).coerceIn(0f, 1f),
-            bottom = (cy + nh / 2f).coerceIn(0f, 1f)
+            left = (cx - halfWidth).coerceIn(0f, 1f),
+            top = top,
+            right = (cx + halfWidth).coerceIn(0f, 1f),
+            bottom = bottom
         )
     }
 
@@ -302,8 +302,8 @@ class VideoSensitiveContentController(
             callback(null)
             return
         }
-        val width = (surface.width / SAMPLE_SCALE).coerceAtLeast(64)
-        val height = (surface.height / SAMPLE_SCALE).coerceAtLeast(64)
+        val width = (surface.width / SAMPLE_SCALE).coerceIn(64, 320)
+        val height = (surface.height / SAMPLE_SCALE).coerceIn(64, 320)
         val bitmap = try {
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         } catch (_: Throwable) {
@@ -326,7 +326,7 @@ class VideoSensitiveContentController(
     }
 
     companion object {
-        private const val SAMPLE_INTERVAL_MS = 900L
-        private const val SAMPLE_SCALE = 4
+        private const val SAMPLE_INTERVAL_MS = 1500L
+        private const val SAMPLE_SCALE = 6
     }
 }
