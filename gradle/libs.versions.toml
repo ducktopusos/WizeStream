@@ -46,6 +46,7 @@ material3 = "1.11.0-alpha07"
 media = "1.7.1"
 media3 = "1.11.1"
 mlkit-face-detection = "16.1.7"
+mlkit-object-detection = "17.0.2"
 mockitoCore = "5.23.0"
 multiplatform = "1.11.0"
 navigation3 = "1.1.1"
@@ -150,6 +151,7 @@ lisawray-groupie-viewbinding = { module = "com.github.lisawray.groupie:groupie-v
 litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
 livefront-bridge = { module = "com.github.livefront:bridge", version.ref = "bridge" }
 mlkit-face-detection = { module = "com.google.mlkit:face-detection", version.ref = "mlkit-face-detection" }
+mlkit-object-detection = { module = "com.google.mlkit:object-detection", version.ref = "mlkit-object-detection" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoCore" }
 newpipe-filepicker = { module = "com.github.TeamNewPipe:NoNonsense-FilePicker", version.ref = "teamnewpipe-filepicker" }
 newpipe-nanojson = { module = "com.github.TeamNewPipe:nanojson", version.ref = "teamnewpipe-nanojson" }

@@ -343,9 +343,13 @@ class VideoSensitiveContentController(
     }
 
     private fun expandRegion(region: NormalizedRect): NormalizedRect {
-        // Expand detected female face to approximate the full body.
         val w = region.right - region.left
         val h = region.bottom - region.top
+        // If the detector already returned a body/person-sized box, keep it.
+        if (h >= 0.25f && h >= w * 1.2f) {
+            return region
+        }
+        // Expand detected female face to approximate the full body.
         val cx = (region.left + region.right) / 2f
         val top = (region.top - h * 0.6f).coerceIn(0f, 1f)
         val bottom = (region.bottom + h * 6.5f).coerceIn(0f, 1f)

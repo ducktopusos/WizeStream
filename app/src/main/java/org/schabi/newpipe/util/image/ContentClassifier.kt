@@ -10,6 +10,10 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetector
 import com.google.mlkit.vision.face.FaceDetectorOptions
+import com.google.mlkit.vision.objects.DetectedObject
+import com.google.mlkit.vision.objects.ObjectDetection
+import com.google.mlkit.vision.objects.ObjectDetector
+import com.google.mlkit.vision.objects.defaults.ObjectDetectorOptions
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -72,6 +76,7 @@ object OnDeviceContentClassifier : ContentClassifier {
     private var nsfwInterpreter: Interpreter? = null
     private var genderInterpreter: Interpreter? = null
     private var faceDetector: FaceDetector? = null
+    private var objectDetector: ObjectDetector? = null
 
     override fun nsfwScore(context: Context, bitmap: Bitmap): Float? {
         ensureInitialized(context)
@@ -92,13 +97,16 @@ object OnDeviceContentClassifier : ContentClassifier {
         val detector = faceDetector ?: return emptyList()
         val interpreter = genderInterpreter ?: return emptyList()
         return runCatching {
-            val faces = Tasks.await(detector.process(InputImage.fromBitmap(bitmap, 0)))
+            val image = InputImage.fromBitmap(bitmap, 0)
+            val faces = Tasks.await(detector.process(image))
+            val personBoxes = detectPersonBoxes(image)
             faces.mapNotNull { face ->
                 val box = face.boundingBox
                 val crop = cropFace(bitmap, box) ?: return@mapNotNull null
                 val probabilities = classifyGender(interpreter, crop) ?: return@mapNotNull null
                 val female = probabilities[1]
                 if (female >= SensitiveContent.FEMALE_THRESHOLD) {
+                    personBoxForFace(box, personBoxes, bitmap)?.let { return@mapNotNull it }
                     NormalizedRect(
                         left = (box.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
                         top = (box.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
@@ -110,6 +118,39 @@ object OnDeviceContentClassifier : ContentClassifier {
                 }
             }
         }.onFailure { Log.w(TAG, "Face/gender inference failed", it) }.getOrDefault(emptyList())
+    }
+
+    private fun detectPersonBoxes(image: InputImage): List<Rect> {
+        val detector = objectDetector ?: return emptyList()
+        return runCatching {
+            Tasks.await(detector.process(image))
+                .filter { obj ->
+                    obj.labels.any { it.index == DetectedObject.LABEL_PERSON } || obj.labels.isEmpty()
+                }
+                .map { it.boundingBox }
+        }.onFailure { Log.w(TAG, "Object detection failed", it) }.getOrDefault(emptyList())
+    }
+
+    private fun personBoxForFace(face: Rect, personBoxes: List<Rect>, bitmap: Bitmap): NormalizedRect? {
+        val cx = face.centerX()
+        val cy = face.centerY()
+        val match = personBoxes.firstOrNull { it.contains(cx, cy) }
+            ?: personBoxes.minByOrNull { box ->
+                val dx = (box.centerX() - cx).toFloat()
+                val dy = (box.centerY() - cy).toFloat()
+                dx * dx + dy * dy
+            }?.takeIf { box ->
+                val dx = (box.centerX() - cx).toFloat() / bitmap.width
+                val dy = (box.centerY() - cy).toFloat() / bitmap.height
+                dx * dx + dy * dy < 0.08f
+            }
+            ?: return null
+        return NormalizedRect(
+            left = (match.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
+            top = (match.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
+            right = (match.right.toFloat() / bitmap.width).coerceIn(0f, 1f),
+            bottom = (match.bottom.toFloat() / bitmap.height).coerceIn(0f, 1f)
+        )
     }
 
     fun reset() {
@@ -152,6 +193,17 @@ object OnDeviceContentClassifier : ContentClassifier {
                             .build()
                     )
                 }.onFailure { Log.w(TAG, "Face detector unavailable", it) }.getOrNull()
+            }
+            if (objectDetector == null) {
+                objectDetector = runCatching {
+                    ObjectDetection.getClient(
+                        ObjectDetectorOptions.Builder()
+                            .setDetectorMode(ObjectDetectorOptions.SINGLE_IMAGE_MODE)
+                            .enableMultipleObjects()
+                            .enableClassification()
+                            .build()
+                    )
+                }.onFailure { Log.w(TAG, "Object detector unavailable", it) }.getOrNull()
             }
             initialized = nsfwInterpreter != null || genderInterpreter != null
         }
