@@ -63,7 +63,9 @@ interface ContentClassifier {
  */
 object OnDeviceContentClassifier : ContentClassifier {
     private const val TAG = "SensitiveContent"
-    private val lock = Any()
+    private val initLock = Any()
+    private val nsfwLock = Any()
+    private val genderLock = Any()
 
     @Volatile
     private var initialized = false
@@ -76,7 +78,7 @@ object OnDeviceContentClassifier : ContentClassifier {
         val interpreter = nsfwInterpreter ?: return null
         return runCatching {
             val output = Array(1) { FloatArray(2) }
-            synchronized(lock) {
+            synchronized(nsfwLock) {
                 interpreter.run(nsfwInputBuffer(bitmap), output)
             }
             output[0][1]
@@ -111,11 +113,15 @@ object OnDeviceContentClassifier : ContentClassifier {
     }
 
     fun reset() {
-        synchronized(lock) {
-            runCatching { nsfwInterpreter?.close() }
-            runCatching { genderInterpreter?.close() }
-            nsfwInterpreter = null
-            genderInterpreter = null
+        synchronized(initLock) {
+            synchronized(nsfwLock) {
+                runCatching { nsfwInterpreter?.close() }
+                nsfwInterpreter = null
+            }
+            synchronized(genderLock) {
+                runCatching { genderInterpreter?.close() }
+                genderInterpreter = null
+            }
             // Keep face detector; it is lightweight and independent of model files.
             initialized = false
         }
@@ -125,7 +131,7 @@ object OnDeviceContentClassifier : ContentClassifier {
         if (initialized) {
             return
         }
-        synchronized(lock) {
+        synchronized(initLock) {
             if (initialized) {
                 return
             }
@@ -161,7 +167,7 @@ object OnDeviceContentClassifier : ContentClassifier {
 
     private fun classifyGender(interpreter: Interpreter, crop: Bitmap): FloatArray? = runCatching {
         val output = Array(1) { FloatArray(2) }
-        synchronized(lock) {
+        synchronized(genderLock) {
             interpreter.run(genderInputBuffer(crop), output)
         }
         output[0]
