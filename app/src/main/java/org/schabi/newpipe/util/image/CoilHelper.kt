@@ -374,7 +374,9 @@ object CoilHelper {
         val memoryCacheKey = when {
             mode != SensitiveContent.OFF ->
                 SensitiveContent.memoryCacheKey(cacheUrl, mode, revealed)
+
             softwareImages -> cacheUrl?.let { "wizestream-software-backdrop:$it" }
+
             else -> cacheUrl
         }
         return ImageRequest

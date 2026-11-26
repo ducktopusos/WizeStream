@@ -174,7 +174,7 @@ configure<ApplicationExtension> {
         generateLocaleConfig = true
         // TFLite interpreters map the models straight from the APK, which only works
         // when the assets are stored uncompressed.
-        noCompress("tflite")
+        noCompress += "tflite"
     }
 
     buildFeatures {

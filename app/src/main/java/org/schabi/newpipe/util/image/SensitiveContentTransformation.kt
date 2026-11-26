@@ -45,6 +45,5 @@ class SensitiveContentTransformation(
         else -> false
     }
 
-    private fun isExplicit(bitmap: Bitmap): Boolean =
-        (classifier.nsfwScore(context, bitmap) ?: 0f) >= SensitiveContent.NSFW_THRESHOLD
+    private fun isExplicit(bitmap: Bitmap): Boolean = (classifier.nsfwScore(context, bitmap) ?: 0f) >= SensitiveContent.NSFW_THRESHOLD
 }

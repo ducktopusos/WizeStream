@@ -63,8 +63,7 @@ object SensitiveContent {
 
     /** True when the currently displayed thumbnail is blurred and can be revealed. */
     @JvmStatic
-    fun shouldOfferReveal(url: String?, mode: String): Boolean =
-        url != null && !isRevealed(url) && blurredUrls[url] == mode
+    fun shouldOfferReveal(url: String?, mode: String): Boolean = url != null && !isRevealed(url) && blurredUrls[url] == mode
 
     /** Memory cache keys must keep blurred, revealed and per-mode bitmaps apart. */
     @JvmStatic
@@ -105,8 +104,7 @@ internal fun blurBitmap(input: Bitmap, radius: Int): Bitmap {
 }
 
 /** Radius proportional to the thumbnail size, clamped so small images stay readable. */
-internal fun blurRadiusFor(width: Int, height: Int): Int =
-    (minOf(width, height) / 20).coerceIn(6, 32)
+internal fun blurRadiusFor(width: Int, height: Int): Int = (minOf(width, height) / 20).coerceIn(6, 32)
 
 private const val BLUR_PASSES = 2
 

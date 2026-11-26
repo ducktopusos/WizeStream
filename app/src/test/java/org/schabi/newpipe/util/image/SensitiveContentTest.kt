@@ -110,7 +110,10 @@ class SensitiveContentTest {
         val url = "https://example.com/all.jpg"
         val input = testBitmap()
         val output = SensitiveContentTransformation(
-            context, SensitiveContent.BLUR_ALL, url, FakeClassifier()
+            context,
+            SensitiveContent.BLUR_ALL,
+            url,
+            FakeClassifier()
         ).transform(input, Size.ORIGINAL)
 
         assertEquals(input.width, output.width)
