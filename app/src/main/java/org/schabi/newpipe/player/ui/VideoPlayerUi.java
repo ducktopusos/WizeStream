@@ -975,6 +975,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
     @Override
     public void onPaused() {
         super.onPaused();
+        sensitiveContentController.onPaused();
         replayHeatmapController.update();
         binding.playbackSeekBar.setPlaybackActive(false);
         danmakuController.pause();

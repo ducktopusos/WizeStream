@@ -24,6 +24,14 @@ private const val GENDER_INPUT_SIZE = 128
 private const val FACE_MARGIN_RATIO = 0.08f
 private val VGG_MEAN = floatArrayOf(103.939f, 116.779f, 123.68f)
 
+/** A normalized rectangle in bitmap coordinates, values in `0..1`. */
+data class NormalizedRect(
+    val left: Float,
+    val top: Float,
+    val right: Float,
+    val bottom: Float
+)
+
 /** On-device classification used to decide whether a thumbnail must be blurred. */
 interface ContentClassifier {
     /** Probability in `0..1` that [bitmap] is explicit, or `null` when unavailable. */
@@ -31,6 +39,9 @@ interface ContentClassifier {
 
     /** Whether [bitmap] contains a face classified as female. */
     fun hasFemaleFace(context: Context, bitmap: Bitmap): Boolean
+
+    /** Normalized face regions classified as female. Default falls back to none. */
+    fun femaleFaceRegions(context: Context, bitmap: Bitmap): List<NormalizedRect> = emptyList()
 }
 
 /**
@@ -71,19 +82,31 @@ object OnDeviceContentClassifier : ContentClassifier {
         }.onFailure { Log.w(TAG, "NSFW inference failed", it) }.getOrNull()
     }
 
-    override fun hasFemaleFace(context: Context, bitmap: Bitmap): Boolean {
+    override fun hasFemaleFace(context: Context, bitmap: Bitmap): Boolean = femaleFaceRegions(context, bitmap).isNotEmpty()
+
+    override fun femaleFaceRegions(context: Context, bitmap: Bitmap): List<NormalizedRect> {
         ensureInitialized(context)
-        val detector = faceDetector ?: return false
-        val interpreter = genderInterpreter ?: return false
+        val detector = faceDetector ?: return emptyList()
+        val interpreter = genderInterpreter ?: return emptyList()
         return runCatching {
             val faces = Tasks.await(detector.process(InputImage.fromBitmap(bitmap, 0)))
-            faces.any { face ->
-                val crop = cropFace(bitmap, face.boundingBox) ?: return@any false
-                val probabilities = classifyGender(interpreter, crop) ?: return@any false
+            faces.mapNotNull { face ->
+                val box = face.boundingBox
+                val crop = cropFace(bitmap, box) ?: return@mapNotNull null
+                val probabilities = classifyGender(interpreter, crop) ?: return@mapNotNull null
                 val female = probabilities[1]
-                female >= SensitiveContent.FEMALE_THRESHOLD && female >= probabilities[0]
+                if (female >= SensitiveContent.FEMALE_THRESHOLD && female >= probabilities[0]) {
+                    NormalizedRect(
+                        left = (box.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
+                        top = (box.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
+                        right = (box.right.toFloat() / bitmap.width).coerceIn(0f, 1f),
+                        bottom = (box.bottom.toFloat() / bitmap.height).coerceIn(0f, 1f)
+                    )
+                } else {
+                    null
+                }
             }
-        }.onFailure { Log.w(TAG, "Face/gender inference failed", it) }.getOrDefault(false)
+        }.onFailure { Log.w(TAG, "Face/gender inference failed", it) }.getOrDefault(emptyList())
     }
 
     private fun ensureInitialized(context: Context) {
