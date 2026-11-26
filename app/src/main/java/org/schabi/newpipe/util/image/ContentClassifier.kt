@@ -107,11 +107,13 @@ object OnDeviceContentClassifier : ContentClassifier {
                 val female = probabilities[1]
                 if (female >= SensitiveContent.FEMALE_THRESHOLD) {
                     personBoxForFace(box, personBoxes, bitmap)?.let { return@mapNotNull it }
-                    NormalizedRect(
-                        left = (box.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
-                        top = (box.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
-                        right = (box.right.toFloat() / bitmap.width).coerceIn(0f, 1f),
-                        bottom = (box.bottom.toFloat() / bitmap.height).coerceIn(0f, 1f)
+                    expandFaceToBody(
+                        NormalizedRect(
+                            left = (box.left.toFloat() / bitmap.width).coerceIn(0f, 1f),
+                            top = (box.top.toFloat() / bitmap.height).coerceIn(0f, 1f),
+                            right = (box.right.toFloat() / bitmap.width).coerceIn(0f, 1f),
+                            bottom = (box.bottom.toFloat() / bitmap.height).coerceIn(0f, 1f)
+                        )
                     )
                 } else {
                     null
@@ -125,12 +127,30 @@ object OnDeviceContentClassifier : ContentClassifier {
         return runCatching {
             Tasks.await(detector.process(image))
                 .filter { obj ->
-                    obj.labels.any { it.index == DetectedObject.LABEL_PERSON } || obj.labels.isEmpty()
+                    // Default object detector has coarse categories, not person.
+                    // Keep prominent objects; we'll only use ones containing a female face.
+                    obj.boundingBox.width() > 0 && obj.boundingBox.height() > 0
                 }
                 .map { it.boundingBox }
         }.onFailure { Log.w(TAG, "Object detection failed", it) }.getOrDefault(emptyList())
     }
 
+
+    private fun expandFaceToBody(region: NormalizedRect): NormalizedRect {
+        val w = region.right - region.left
+        val h = region.bottom - region.top
+        if (h >= 0.25f && h >= w * 1.2f) return region
+        val cx = (region.left + region.right) / 2f
+        val top = (region.top - h * 0.6f).coerceIn(0f, 1f)
+        val bottom = (region.bottom + h * 6.5f).coerceIn(0f, 1f)
+        val halfWidth = (w * 2.2f).coerceAtLeast(h * 1.4f)
+        return NormalizedRect(
+            left = (cx - halfWidth).coerceIn(0f, 1f),
+            top = top,
+            right = (cx + halfWidth).coerceIn(0f, 1f),
+            bottom = bottom
+        )
+    }
     private fun personBoxForFace(face: Rect, personBoxes: List<Rect>, bitmap: Bitmap): NormalizedRect? {
         val cx = face.centerX()
         val cy = face.centerY()
