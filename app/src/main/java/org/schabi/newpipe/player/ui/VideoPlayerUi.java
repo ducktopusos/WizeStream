@@ -123,6 +123,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
     private final DanmakuController danmakuController;
     private final DualCaptionController dualCaptionController;
     private final ReplayHeatmapController replayHeatmapController;
+    private final VideoSensitiveContentController sensitiveContentController;
     private final PlaybackTimeDisplay playbackTimeDisplay;
     private final Handler controlsVisibilityHandler = new Handler(Looper.getMainLooper());
     private long lastTvBackPressedAt;
@@ -178,11 +179,13 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         replayHeatmapController = ReplayHeatmapController.forPlayer(binding, player);
         playbackTimeDisplay = PlaybackTimeDisplay.forPlayer(binding.playbackEndTime, player);
         qualityFeedback = new PlayerQualityFeedback(player);
+        sensitiveContentController = new VideoSensitiveContentController(binding, player);
         setupFromView();
         player.getCurrentStreamInfo().ifPresent(danmakuController::onMetadataChanged);
         player.getCurrentStreamInfo().ifPresent(replayHeatmapController::onMetadataChanged);
+        player.getCurrentStreamInfo().ifPresent(info ->
+                sensitiveContentController.onMetadataChanged(info.getUrl()));
     }
-
     public void setupFromView() {
         org.schabi.newpipe.util.AppFonts.observe(binding.getRoot());
         initViews();
@@ -195,7 +198,6 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         org.schabi.newpipe.themes.ThemeIcons.apply(binding.shuffleButton, "shuffle");
         setupPlayerSeekOverlay();
     }
-
     private void initViews() {
         setupSubtitleView();
         binding.resizeTextView
@@ -484,6 +486,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         playbackTimeDisplay.close();
         danmakuController.destroy();
         dualCaptionController.release();
+        sensitiveContentController.destroy();
         seekbarPreviewThumbnailHolder.clear();
         super.destroy();
         clearScaledEndScreenThumbnail();
@@ -941,6 +944,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
 
         updateStreamRelatedViews();
         danmakuController.start();
+        sensitiveContentController.onPlaying();
 
         binding.playbackSeekBar.setEnabled(player.canSeekCurrentWindow());
         applyPlayerSeekBarColor();
@@ -975,6 +979,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
     @Override
     public void onPaused() {
         super.onPaused();
+        sensitiveContentController.onPaused();
         replayHeatmapController.update();
         binding.playbackSeekBar.setPlaybackActive(false);
         danmakuController.pause();
@@ -1154,6 +1159,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
         restoreVideoAspectRatioFromPlayer();
         //TODO check if this causes black screen when switching to fullscreen
         animate(binding.surfaceForeground, false, DEFAULT_CONTROLS_DURATION);
+        sensitiveContentController.onRenderedFirstFrame();
     }
     //endregion
     /*//////////////////////////////////////////////////////////////////////////
@@ -1171,6 +1177,7 @@ public abstract class VideoPlayerUi extends PlayerUi implements SeekBar.OnSeekBa
 
         danmakuController.onMetadataChanged(info);
         dualCaptionController.onMetadata(info);
+        sensitiveContentController.onMetadataChanged(info.getUrl());
         updateStreamRelatedViews();
 
         binding.titleTextView.setText(info.getName());
