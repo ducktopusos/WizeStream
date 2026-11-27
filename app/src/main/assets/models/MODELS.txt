@@ -1,0 +1,26 @@
+On-device models for sensitive content detection.
+
+The models are not bundled in the APK. Selecting an AI option downloads them
+to app-private storage from this project's GitHub release and verifies SHA-256.
+
+1) nsfw.tflite
+   Explicit-content classifier: GantMan/nsfw_model MobileNetV2 140x224 TFLite,
+   the family used by nsfwjs/HaramBlur. Input [1,224,224,3] RGB in 0..1;
+   output [drawings, hentai, neutral, porn, sexy].
+   Source: https://github.com/GantMan/nsfw_model (MIT). See nsfw-model-LICENSE.txt.
+   SHA-256: 380f98f7685f9d8a386f8cc595b6dfcb972989aae3d1b8b270d3a4a5b96fab40
+
+2) gender.tflite
+   Gender classifier used on detected faces (male / female).
+   Source: https://github.com/shubham0204/Age-Gender_Estimation_TF-Android
+   (MIT License; model trained by that project's author on UTKFace).
+   See gender-model-LICENSE.txt.
+   Input [1,128,128,3] RGB in 0..1; output [1,2] in the order [male, female].
+   Expects a tight face crop.
+   SHA-256: 7ab000d530a005ccd605a2826485b23d08690d0e4fb23bc4589a5b03861750c0
+
+Faces are detected with ML Kit's bundled on-device detector in fast mode, then
+classified by gender with a conservative threshold before a body region is
+blurred. This follows HaramBlur's face detection and gender recognition flow,
+with nsfwjs-style explicit-content scoring. All inference happens locally; no
+bitmap ever leaves the device.
