@@ -165,14 +165,14 @@ object CoilHelper {
         target: ImageView,
         images: List<Image>
     ) {
-        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_video)
+        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_video, protect = true)
     }
 
     fun loadThumbnail(
         target: ImageView,
         url: String?
     ) {
-        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video)
+        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, protect = true)
     }
 
     fun clearImage(target: ImageView) {
@@ -239,7 +239,7 @@ object CoilHelper {
         images: List<Image>
     ) {
         val url = ImageStrategy.choosePreferredImage(images)
-        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, false)
+        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_video, false, protect = true)
     }
 
     fun loadBanner(
@@ -265,32 +265,39 @@ object CoilHelper {
         target: ImageView,
         images: List<Image>
     ) {
-        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_playlist)
+        loadImageDefault(target, images, R.drawable.placeholder_thumbnail_playlist, protect = true)
     }
 
     fun loadPlaylistThumbnail(
         target: ImageView,
         url: String?
     ) {
-        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_playlist)
+        loadImageDefault(target, url, R.drawable.placeholder_thumbnail_playlist, protect = true)
     }
 
     private fun loadImageDefault(
         target: ImageView,
         images: List<Image>,
-        @DrawableRes placeholderResId: Int
+        @DrawableRes placeholderResId: Int,
+        protect: Boolean = false
     ) {
-        loadImageDefault(target, ImageStrategy.choosePreferredImage(images), placeholderResId)
+        loadImageDefault(
+            target,
+            ImageStrategy.choosePreferredImage(images),
+            placeholderResId,
+            protect = protect
+        )
     }
 
     private fun loadImageDefault(
         target: ImageView,
         url: String?,
         @DrawableRes placeholderResId: Int,
-        showPlaceholder: Boolean = true
+        showPlaceholder: Boolean = true,
+        protect: Boolean = false
     ) {
         val request =
-            getImageRequest(target.context, url, placeholderResId, showPlaceholder)
+            getImageRequest(target.context, url, placeholderResId, showPlaceholder, protect)
                 .target(target)
                 .build()
         target.context.imageLoader.enqueue(request)
@@ -300,7 +307,8 @@ object CoilHelper {
         context: Context,
         url: String?,
         @DrawableRes placeholderResId: Int,
-        showPlaceholderWhileLoading: Boolean = true
+        showPlaceholderWhileLoading: Boolean = true,
+        protect: Boolean = false
     ): ImageRequest.Builder {
         // if the URL was chosen with `choosePreferredImage` it will be null, but check again
         // `shouldLoadImages` in case the URL was chosen with `imageListToDbUrl` (which is the case
@@ -326,12 +334,18 @@ object CoilHelper {
         // on a software canvas even when the current target is hardware accelerated.
         val softwareImages = Build.VERSION.SDK_INT == Build.VERSION_CODES.Q ||
             org.schabi.newpipe.themes.ThemeChrome.requiresSoftwareImages(context)
+        val mode = if (protect) SensitiveContent.mode(context) else SensitiveContent.OFF
+        val memoryCacheKey = when {
+            mode != SensitiveContent.OFF -> SensitiveContent.memoryCacheKey(cacheUrl, mode)
+            softwareImages -> cacheUrl?.let { "wizestream-software-backdrop:$it" }
+            else -> cacheUrl
+        }
         return ImageRequest
             .Builder(context)
             .allowHardware(!softwareImages)
             .data(takenUrl)
             .error(placeholderResId)
-            .memoryCacheKey(cacheUrl?.let { if (softwareImages) "wizestream-software-backdrop:$it" else it })
+            .memoryCacheKey(memoryCacheKey)
             .diskCacheKey(cacheUrl)
             .apply {
                 if (pluginHeaders != null) {
@@ -341,6 +355,9 @@ object CoilHelper {
                 }
                 if (takenUrl != null || showPlaceholderWhileLoading) {
                     placeholder(placeholderResId)
+                }
+                if (mode != SensitiveContent.OFF) {
+                    transformations(SensitiveContentTransformation(context, mode))
                 }
             }
     }
