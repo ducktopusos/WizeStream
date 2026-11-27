@@ -204,15 +204,15 @@ class SensitiveContentTest {
     }
 
     @Test
-    fun nsfwInputUsesBgrOrderWithVggMeanSubtracted() {
+    fun nsfwInputUsesRgbFloatsInZeroToOne() {
         val bitmap = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
         bitmap.eraseColor(Color.rgb(10, 20, 30))
 
         val buffer = nsfwInputBuffer(bitmap)
 
-        assertEquals(30f - 103.939f, buffer.getFloat(0), 0.001f)
-        assertEquals(20f - 116.779f, buffer.getFloat(4), 0.001f)
-        assertEquals(10f - 123.68f, buffer.getFloat(8), 0.001f)
+        assertEquals(10f / 255f, buffer.getFloat(0), 0.001f)
+        assertEquals(20f / 255f, buffer.getFloat(4), 0.001f)
+        assertEquals(30f / 255f, buffer.getFloat(8), 0.001f)
     }
 
     @Test

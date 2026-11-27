@@ -20,10 +20,8 @@ import org.tensorflow.lite.Interpreter
 private const val NSFW_MODEL = "nsfw.tflite"
 private const val GENDER_MODEL = "gender.tflite"
 private const val NSFW_INPUT_SIZE = 224
-private const val NSFW_SCALE_SIZE = 256
 private const val GENDER_INPUT_SIZE = 128
 private const val FACE_MARGIN_RATIO = 0.08f
-private val VGG_MEAN = floatArrayOf(103.939f, 116.779f, 123.68f)
 
 /** A normalized rectangle in bitmap coordinates, values in `0..1`. */
 data class NormalizedRect(
@@ -48,10 +46,9 @@ interface ContentClassifier {
 /**
  * Bundled-model implementation.
  *
- * * Explicit content: Yahoo's open_nsfw classifier (`models/nsfw.tflite`,
- *   BSD-3-Clause), the same two-class network the HaramBlur extension family
- *   builds on. Input `1x224x224x3` BGR with the VGG mean subtracted, output
- *   `[safe, explicit]`.
+ * * Explicit content: GantMan/nsfw_model MobileNetV2 140x224 (`nsfw.tflite`,
+ *   MIT), the same model family used by nsfwjs/HaramBlur. Input `1x224x224x3`
+ *   RGB in `0..1`, output `[drawings, hentai, neutral, porn, sexy]`.
  * * Faces: ML Kit face detection, the on-device equivalent of the BlazeFace
  *   detector used by HaramBlur.
  * * Gender: `models/gender.tflite` from shubham0204's MIT-licensed
@@ -77,11 +74,13 @@ object OnDeviceContentClassifier : ContentClassifier {
         ensureInitialized(context)
         val interpreter = nsfwInterpreter ?: return null
         return runCatching {
-            val output = Array(1) { FloatArray(2) }
+            val output = Array(1) { FloatArray(5) }
             synchronized(nsfwLock) {
                 interpreter.run(nsfwInputBuffer(bitmap), output)
             }
-            output[0][1]
+            val p = output[0]
+            // [drawings, hentai, neutral, porn, sexy]
+            maxOf(p[1], p[3], p[4], 1f - p[2] - p[0])
         }.onFailure { Log.w(TAG, "NSFW inference failed", it) }.getOrNull()
     }
 

@@ -22,7 +22,7 @@ object SensitiveContentModelManager {
         Model(
             name = "nsfw.tflite",
             url = "$RELEASE_BASE/nsfw.tflite",
-            sha256 = "a476ef325f4f776602d944fd28133e945f77a74e37dafba37936110b35b7810d"
+            sha256 = "380f98f7685f9d8a386f8cc595b6dfcb972989aae3d1b8b270d3a4a5b96fab40"
         ),
         Model(
             name = "gender.tflite",
@@ -44,9 +44,29 @@ object SensitiveContentModelManager {
 
     fun modelFile(context: Context, name: String): File = File(modelsDir(context), name)
 
-    fun isInstalled(context: Context): Boolean = MODELS.all { model ->
-        val file = modelFile(context, model.name)
-        file.isFile && file.length() > 0
+    @Volatile private var verifiedInstall: Boolean? = null
+
+    fun isInstalled(context: Context): Boolean {
+        verifiedInstall?.let { return it }
+        val ok = MODELS.all { model ->
+            val file = modelFile(context, model.name)
+            file.isFile && file.length() > 0 && sha256(file) == model.sha256.lowercase()
+        }
+        verifiedInstall = ok
+        return ok
+    }
+
+    private fun sha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buf = ByteArray(8192)
+            while (true) {
+                val read = input.read(buf)
+                if (read < 0) break
+                digest.update(buf, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     fun getState(context: Context): State {
@@ -66,6 +86,7 @@ object SensitiveContentModelManager {
 
     fun ensureDownloaded(context: Context, force: Boolean = false) {
         val appContext = context.applicationContext
+        if (force) verifiedInstall = null
         if (!force && isInstalled(appContext)) {
             updateState(State(Status.INSTALLED))
             return
@@ -81,6 +102,7 @@ object SensitiveContentModelManager {
                 for (model in MODELS) {
                     downloadModel(model, File(dir, model.name))
                 }
+                verifiedInstall = null
                 OnDeviceContentClassifier.reset()
                 updateState(State(Status.INSTALLED))
             } catch (t: Throwable) {

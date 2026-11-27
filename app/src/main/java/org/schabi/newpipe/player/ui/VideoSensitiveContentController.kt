@@ -38,6 +38,7 @@ class VideoSensitiveContentController(
     private var lastResult: DetectionResult? = null
     private var stableSamples = 0
     private var awaitingClassification = false
+    private var cleanStreak = 0
 
     private val sampleRunnable = object : Runnable {
         override fun run() {
@@ -51,6 +52,7 @@ class VideoSensitiveContentController(
         lastSignature = null
         lastResult = null
         stableSamples = 0
+        cleanStreak = 0
         armCoverageIfNeeded()
         scheduleSample(300)
     }
@@ -73,6 +75,7 @@ class VideoSensitiveContentController(
         lastSignature = null
         lastResult = null
         stableSamples = 0
+        cleanStreak = 0
         awaitingClassification = false
         hideOverlay()
     }
@@ -119,6 +122,7 @@ class VideoSensitiveContentController(
             lastSignature = null
             lastResult = null
             stableSamples = 0
+            cleanStreak = 0
             awaitingClassification = true
             showFullOverlay(null)
         }
@@ -244,17 +248,24 @@ class VideoSensitiveContentController(
             return
         }
         awaitingClassification = false
-        if (result.fullFrame) {
-            val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
-            if (blurred != source) source.recycle()
-            showFullOverlay(blurred)
-        } else if (result.regions.isNotEmpty()) {
-            val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
-            if (blurred != source) source.recycle()
-            showRegions(result.regions, blurred)
+        if (result.hasSensitive) {
+            cleanStreak = 0
+            if (result.fullFrame) {
+                val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
+                if (blurred != source) source.recycle()
+                showFullOverlay(blurred)
+            } else {
+                val blurred = blurBitmap(source, blurRadiusFor(source.width, source.height, SensitiveContent.intensity(binding.root.context)))
+                if (blurred != source) source.recycle()
+                showRegions(result.regions, blurred)
+            }
         } else {
             source.recycle()
-            hideOverlay()
+            cleanStreak++
+            if (cleanStreak >= 2 || lastResult == null) {
+                hideOverlay()
+            }
+            // otherwise keep previous overlay to avoid flicker
         }
         if (player.isPlaying) scheduleSample(nextInterval())
     }
@@ -286,7 +297,7 @@ class VideoSensitiveContentController(
             awaitingClassification = false
             return
         }
-        if (!awaitingClassification && lastResult == null) {
+        if (lastResult == null && !binding.sensitiveContentVideoOverlay.isVisible) {
             awaitingClassification = true
             showFullOverlay(null)
         }
