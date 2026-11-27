@@ -193,22 +193,21 @@ object OnDeviceContentClassifier : ContentClassifier {
 }
 
 /**
- * Scales to 256x256, center-crops to 224x224 and converts to the BGR layout with
- * the VGG mean subtracted that open_nsfw was trained on.
+ * Scales to 224x224 RGB in 0..1, matching the GantMan/nsfw_model MobileNetV2
+ * input used by nsfwjs/HaramBlur.
  */
 internal fun nsfwInputBuffer(bitmap: Bitmap): ByteBuffer {
-    val scaled = Bitmap.createScaledBitmap(bitmap, NSFW_SCALE_SIZE, NSFW_SCALE_SIZE, true)
-    val offset = (NSFW_SCALE_SIZE - NSFW_INPUT_SIZE) / 2
+    val scaled = Bitmap.createScaledBitmap(bitmap, NSFW_INPUT_SIZE, NSFW_INPUT_SIZE, true)
     val pixels = IntArray(NSFW_INPUT_SIZE * NSFW_INPUT_SIZE)
-    scaled.getPixels(pixels, 0, NSFW_INPUT_SIZE, offset, offset, NSFW_INPUT_SIZE, NSFW_INPUT_SIZE)
+    scaled.getPixels(pixels, 0, NSFW_INPUT_SIZE, 0, 0, NSFW_INPUT_SIZE, NSFW_INPUT_SIZE)
 
     val buffer = ByteBuffer
-        .allocateDirect(1 * NSFW_INPUT_SIZE * NSFW_INPUT_SIZE * 3 * 4)
+        .allocateDirect(4 * NSFW_INPUT_SIZE * NSFW_INPUT_SIZE * 3)
         .order(ByteOrder.nativeOrder())
     for (pixel in pixels) {
-        buffer.putFloat(Color.blue(pixel) - VGG_MEAN[0])
-        buffer.putFloat(Color.green(pixel) - VGG_MEAN[1])
-        buffer.putFloat(Color.red(pixel) - VGG_MEAN[2])
+        buffer.putFloat(Color.red(pixel) / 255f)
+        buffer.putFloat(Color.green(pixel) / 255f)
+        buffer.putFloat(Color.blue(pixel) / 255f)
     }
     buffer.rewind()
     return buffer
