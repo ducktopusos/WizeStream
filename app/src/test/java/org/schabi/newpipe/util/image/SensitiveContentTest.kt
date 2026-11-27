@@ -35,12 +35,18 @@ class SensitiveContentTest {
         if (!dir.exists()) dir.mkdirs()
         File(dir, "nsfw.tflite").writeBytes(byteArrayOf(0))
         File(dir, "gender.tflite").writeBytes(byteArrayOf(0))
+        val field = SensitiveContentModelManager::class.java.getDeclaredField("verifiedInstall")
+        field.isAccessible = true
+        field.set(SensitiveContentModelManager, true)
     }
 
     @After
     fun reset() {
         setMode(SensitiveContent.OFF)
         SensitiveContentModelManager.modelsDir(context).deleteRecursively()
+        val field = SensitiveContentModelManager::class.java.getDeclaredField("verifiedInstall")
+        field.isAccessible = true
+        field.set(SensitiveContentModelManager, null)
     }
 
     private class FakeClassifier(
