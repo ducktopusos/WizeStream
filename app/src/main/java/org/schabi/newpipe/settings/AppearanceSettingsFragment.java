@@ -28,6 +28,7 @@ public class AppearanceSettingsFragment extends BasePreferenceFragment {
         org.schabi.newpipe.settings.appearance.LauncherIcons.bind(this);
         org.schabi.newpipe.settings.appearance.AppFontSettings.bind(this);
         org.schabi.newpipe.settings.appearance.NavigationAppearanceSettings.bind(this);
+        org.schabi.newpipe.settings.appearance.SensitiveContentSettings.bind(this);
 
         final String themeKey = getString(R.string.theme_key);
         final ListPreference themes = findPreference(themeKey);
@@ -148,6 +149,12 @@ public class AppearanceSettingsFragment extends BasePreferenceFragment {
         if (preference != null) {
             preference.setVisible(visible);
         }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        org.schabi.newpipe.settings.appearance.SensitiveContentSettings.refresh(this);
     }
 
     @Override

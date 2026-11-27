@@ -172,6 +172,9 @@ configure<ApplicationExtension> {
 
     androidResources {
         generateLocaleConfig = true
+        // TFLite interpreters map the models straight from the APK, which only works
+        // when the assets are stored uncompressed.
+        noCompress += "tflite"
     }
 
     buildFeatures {
@@ -459,6 +462,10 @@ dependencies {
     // Image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+
+    // On-device sensitive content detection
+    implementation(libs.litert)
+    implementation(libs.mlkit.face.detection)
 
     // Markdown library for Android
     implementation(libs.noties.markwon.core)
