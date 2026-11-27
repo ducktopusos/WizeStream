@@ -58,6 +58,16 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
+        <org.schabi.newpipe.player.ui.SensitiveContentVideoOverlayView
+            android:id="@+id/sensitiveContentVideoOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerInParent="true"
+            android:clickable="false"
+            android:contentDescription="@string/sensitive_content_title"
+            android:focusable="false"
+            android:visibility="gone" />
+
         <androidx.media3.ui.SubtitleView
             android:id="@+id/subtitleView"
             android:layout_width="match_parent"
